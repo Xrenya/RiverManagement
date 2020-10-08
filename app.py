@@ -11,13 +11,15 @@ from random import randint
 #server = flask.Flask(__name__)
 #server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
 #app = dash.Dash(__name__, server=server)
-app = Flask(__name__)
+#app = Flask(__name__)
 
 # Gapminder dataset GAPMINDER.ORG, CC-BY LICENSE
 df = pd.read_csv("df.csv", index_col=0)
 df_years = pd.read_csv("yearly.csv", index_col=0)
 # Dash app
-app = dash.Dash()
+#app = dash.Dash()
+server = flask.Flask(__name__)
+app = dash.Dash(__name__, server=server)
 app.css.append_css({
     'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
 })
@@ -559,6 +561,6 @@ def update_graph(river_values):
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
-    #app.run_server(debug=True)
+    #app.run(debug=False)
+    app.run_server(debug=True)
     #app.server.run(debug=True, threaded=True)
