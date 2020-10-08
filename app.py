@@ -8,9 +8,10 @@ import flask
 import os
 from random import randint
 
-server = flask.Flask(__name__)
-server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
-app = dash.Dash(__name__, server=server)
+#server = flask.Flask(__name__)
+#server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
+#app = dash.Dash(__name__, server=server)
+app = Flask(__name__)
 
 # Gapminder dataset GAPMINDER.ORG, CC-BY LICENSE
 df = pd.read_csv("df.csv", index_col=0)
@@ -558,5 +559,6 @@ def update_graph(river_values):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run()
+    #app.run_server(debug=True)
     #app.server.run(debug=True, threaded=True)
