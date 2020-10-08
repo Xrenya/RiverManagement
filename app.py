@@ -23,13 +23,13 @@ df_years = pd.read_csv("yearly.csv", index_col=0)
 PORT = 8050
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-server = app.server
 # Creating app
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # Associating server
 server = app.server
-})
+app.title = 'River Pollution'
+app.config.suppress_callback_exceptions = True
 
 # Utility functions
 def generate_table(dataframe, max_rows=10):
