@@ -7,9 +7,7 @@ import plotly.express as px
 import flask
 import os
 
-server = flask.Flask(__name__)
-server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
-app = dash.Dash(__name__, server=server)
+server = app.server
 
 # Gapminder dataset GAPMINDER.ORG, CC-BY LICENSE
 df = pd.read_csv("df.csv", index_col=0)
