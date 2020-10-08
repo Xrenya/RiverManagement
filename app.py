@@ -565,5 +565,6 @@ def update_graph(river_values):
 
 if __name__ == '__main__':
     #app.run(debug=False)
-    app.run_server(debug=True)
+    #app.run_server(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     #app.server.run(debug=True, threaded=True)
