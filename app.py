@@ -7,7 +7,7 @@ import plotly.express as px
 from flask import Flask
 import os
 from random import randint
-from bottle import route, run
+
 #server = flask.Flask(__name__)
 #server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
 #app = dash.Dash(__name__, server=server)
@@ -22,9 +22,13 @@ df_years = pd.read_csv("yearly.csv", index_col=0)
 #app = dash.Dash(__name__, server=server)
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-server = app.server
 
+server = app.server
+# Creating app
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+# Associating server
+server = app.server
 })
 
 # Utility functions
@@ -566,5 +570,5 @@ def update_graph(river_values):
 if __name__ == '__main__':
     #app.run(debug=False)
     #app.run_server(debug=True)
-    run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run_server(debug=True)
     #app.server.run(debug=True, threaded=True)
