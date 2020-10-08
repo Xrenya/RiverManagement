@@ -18,10 +18,13 @@ df = pd.read_csv("df.csv", index_col=0)
 df_years = pd.read_csv("yearly.csv", index_col=0)
 # Dash app
 #app = dash.Dash()
-server = flask.Flask(__name__)
-app = dash.Dash(__name__, server=server)
-app.css.append_css({
-    'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
+#server = flask.Flask(__name__)
+#app = dash.Dash(__name__, server=server)
+
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
+
 })
 
 # Utility functions
