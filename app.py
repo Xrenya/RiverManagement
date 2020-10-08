@@ -5,6 +5,7 @@ import dash_core_components as dcc
 import plotly.graph_objs as go
 import plotly.express as px
 import flask
+import os
 
 server = flask.Flask(__name__)
 server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
