@@ -1,4 +1,4 @@
-python==3.6
+python
 flask
 dash
 dash_core_components
