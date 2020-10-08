@@ -1,5 +1,5 @@
 # RiverManagement
-Web application for monitoring pollution level in rivers.
+Web application (hosted [here](https://rivermanagement.herokuapp.com/)) for monitoring pollution level in rivers.
 
 Web interface:
 ![Image of interface](https://github.com/Xrenya/RiverManagement/blob/master/plot.png)
