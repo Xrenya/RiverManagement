@@ -5,4 +5,4 @@ dash_html_components
 pandas
 numpy
 plotly
-gunicorn>=19.7.1
+gunicorn
