@@ -20,7 +20,7 @@ df_years = pd.read_csv("yearly.csv", index_col=0)
 #app = dash.Dash()
 #server = flask.Flask(__name__)
 #app = dash.Dash(__name__, server=server)
-
+PORT = 8050
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 server = app.server
@@ -570,5 +570,5 @@ def update_graph(river_values):
 if __name__ == '__main__':
     #app.run(debug=False)
     #app.run_server(debug=True)
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=PORT)
     #app.server.run(debug=True, threaded=True)
