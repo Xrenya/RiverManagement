@@ -1,574 +1,409 @@
-import pandas as pd
-import dash
-import dash_html_components as html
-import dash_core_components as dcc
-import plotly.graph_objs as go
 import plotly.express as px
-from flask import Flask
-import os
-from random import randint
+import pandas as pd
+import numpy as np
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
+import dash_bootstrap_components as dbc
+import plotly.graph_objs as go
+from datetime import date
+from plotly.subplots import make_subplots
 
-#server = flask.Flask(__name__)
-#server.secret_key = os.environ.get('secret_key', str(randint(0, 1000000)))
-#app = dash.Dash(__name__, server=server)
-#app = Flask(__name__)
+PORT = 8051
 
-# Gapminder dataset GAPMINDER.ORG, CC-BY LICENSE
-df = pd.read_csv("df.csv", index_col=0)
-df_years = pd.read_csv("yearly.csv", index_col=0)
-# Dash app
-#app = dash.Dash()
-#server = flask.Flask(__name__)
-#app = dash.Dash(__name__, server=server)
-PORT = 8050
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+df = pd.read_csv("7202136720.76.2.csv", encoding="cp1251", delimiter=";")
 
-# Creating app
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+df["Lon"] = 0
+df["Lat"] = 0
+name = df.columns.to_list()
+chemicals = name[2:13]
+df_clean = df.copy()
+# Make value to 0 if there is not clear whether there is a "ПДК" or "Выше ПДК"
+for col in range(2, 13):
+    for row in range(len(df_clean)):
+        if len(df_clean.iloc[row, col])<=4:
+            df_clean.iloc[row, col] = str(df_clean.iloc[row, col]).replace(",", ".")
+
+for col in range(2, 13):
+    for row in range(len(df_clean)):
+        try:
+            if float(df_clean.iloc[row, col])>0:
+                df_clean.iloc[row, col] = 1
+        except:
+            continue
+
+df_clean = df_clean.replace({"в пределах нормы": 0, "В пределах нормы ": 0, "В пределах нормы": 0})
+df_clean = df_clean.replace({"Выше нормы": 1, "выше ПДК": 2, "Выше ПДК": 2})
+df_clean = df_clean.replace({" ": 0})
+df_clean = df_clean.replace({"-": 0})
+
+index = df_clean.loc[df_clean["Наименование водного объекта"] == 0].index.tolist()
+df_clean = df_clean.drop(index=index)
+
+for i in range(len(df_clean)):
+    df_clean.iloc[i, 1] = df_clean.iloc[i, 1].replace(", ПДК", "")
+    df_clean.iloc[i, 1] = df_clean.iloc[i, 1].replace(", превышение ПДК", "")
+    if df_clean.iloc[i, 1] == "р. Тобол, с. Иевлево":
+        df_clean.iloc[i, 1] = "р. Тобол, в створе с. Иевлево"
+    
+rivers = df_clean.groupby("Наименование водного объекта")["Номер"].nunique().index.to_list()
+
+location_dict = {
+    "р. Ишим, в створе с. Абатское": [56.285047300385344, 70.47371860119425],
+    "р. Ишим, в створе с. Ильинское": [55.44978293874859, 69.3301582915707],
+    "р. Ишим, выше г. Ишима": [56.07169432110331, 69.43708215838365],
+    "р. Ишим, ниже г. Ишима": [56.10577817944233, 69.58405204322325],
+    "р. Тобол, в створе с. Иевлево": [57.57166046262647, 67.13838760936815],
+    "р. Тобол, в створе с. Коркино": [56.08280026916204, 65.92686257850409],
+    "р. Тобол, выше г. Ялуторовска": [56.616536196425926, 66.29641445127238],
+    "р. Тобол, ниже г. Ялуторовска": [56.678684490568656, 66.36754361502852],
+    "р. Тура, в створе с. Покровское": [57.2357237662492, 66.78950001970463],
+    "р. Тура, в створе с. Салаирка": [57.37425356760983, 65.02041300889604],
+    "р. Тура, выше г. Тюмени": [57.241179921985605, 65.42449197272792],
+    "р. Тура, ниже г. Тюмени": [57.10438605873693, 65.78494851932228],
+}
+def full(num):
+    return np.full(11, num)
+
+source = [full(0), full(1), full(2), full(3), 
+          full(4), full(5), full(6), full(7), 
+          full(9), full(10), full(11), full(12)]
+target = [full(1), full(2), full(3), full(7), 
+          full(5), full(6), full(7), full(8), 
+          full(10), full(11), full(12), full(13)]
+rivers_list = ["р. Тура, в створе с. Салаирка", 
+               "р. Тура, выше г. Тюмени", 
+               "р. Тура, ниже г. Тюмени", 
+               "р. Тура, в створе с. Покровское", 
+               "р. Тобол, в створе с. Коркино", 
+               "р. Тобол, выше г. Ялуторовска", 
+               "р. Тобол, ниже г. Ялуторовска", 
+               "р. Тобол, в створе с. Иевлево", 
+               "р. Тобол", 
+               "р. Ишим, в створе с. Ильинское", 
+               "р. Ишим, выше г. Ишима", 
+               "р. Ишим, ниже г. Ишима", 
+               "р. Ишим, в створе с. Абатское", 
+               "р. Ишим"]
+colours = [
+    "#9acd32",
+    "#7fffd4",
+    "#ffe4c4",
+    "#8a2be2",
+    "#000000",
+    "#8fbc8f",
+    "#8b4513",
+    "#708090",
+    "#d2b48c",
+    "#6a5acd",
+    "#ff4500"
+]
+
+for i in range(len(df_clean)):
+    river_name = df_clean.iloc[i, 1]
+    df_clean.iloc[i, 15] = location_dict[river_name][1]
+    df_clean.iloc[i, 16] = location_dict[river_name][0]
+    
+df_time = df_clean.copy()
+df_time["Период наблюдений"] = pd.to_datetime(df_time["Период наблюдений"], errors="coerce")
+df_time["Период наблюдений"] = df_time["Период наблюдений"].apply(lambda x: str(x).replace(" 00:00:00", ""))
+df_time = df_time.sort_values(by=["Период наблюдений"])
+df_time.reset_index(drop=True)
+
+external_stylesheets = [dbc.themes.BOOTSTRAP]
+app = dash.Dash(external_stylesheets=external_stylesheets)
 
 # Associating server
 server = app.server
-app.title = 'River Pollution'
+app.title = 'Pollution tracker'
 app.config.suppress_callback_exceptions = True
 
-# Utility functions
-def generate_table(dataframe, max_rows=10):
-    return html.Table(
-        # Header
-        [html.Tr([html.Th(col) for col in dataframe.columns])] +
+app.layout = html.Div(
+    [
+        html.H1("Pollution tracker"),
+        
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                           html.Div(
+                                [
+                                    html.P("Select chemicals", style={"height": "auto",
+                                                            "margin-bottom": "auto",
+                                                            "font-weight": "bold"}
+                                    ),
+                                    
+                                    dcc.Dropdown(
+                                        id="chemicals_dropdown",
+                                        options=[{"label" : i, "value" : i} for i in chemicals],
+                                        multi=True,
+                                        value=["Нефтепродукты"],
+                                        style=dict(height = "49px")
+                                    ),            
+                                ]
+                            )
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.Div(
+                            [
+                                html.P("Select the date", 
+                                        style={"height": "auto",
+                                                "margin-bottom": "auto",
+                                                "font-weight": "bold"}
+                                ),
+                                dbc.Row(
+                                    [
+                                        dcc.DatePickerSingle(
+                                            id='my-date-picker-single',
+                                            initial_visible_month=date(2015, 1, 20),
+                                            display_format='MM Y, DD',
+                                            date=date(2015, 1, 20)
+                                        ),
+                                    ]
+                                ),
+                            ]
+                        )
+                    ]
+                ),
+            ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dcc.Graph(id="map"),
+                ),
+                dbc.Col(
+                    [
+                        dcc.Graph(id='sankey'),
+                    ]
+                )
+            ]
+        ),
+        dcc.Markdown("The comparison of pollution level"),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dcc.Graph(id='timeseries-graph_2')
+                    ], width=8
+                ),
+                dbc.Col(
+                    [
+                        html.P("Select the time range for first graphic", 
+                                        style={"height": "auto",
+                                                "margin-bottom": "auto",
+                                                "font-weight": "bold"}
+                        ),
+                        dcc.DatePickerSingle(
+                            id='date_start',
+                            initial_visible_month=date(2015, 1, 20),
+                            display_format='MM Y, DD',
+                            date=date(2015, 1, 20)
+                        ),
+                        dcc.DatePickerSingle(
+                            id='date_end',
+                            initial_visible_month=date(2016, 1, 20),
+                            display_format='MM Y, DD',
+                            date=date(2016, 1, 20)
+                        ),
+                        html.P("Select the time range for second graphic", 
+                                        style={"height": "auto",
+                                                "margin-bottom": "auto",
+                                                "font-weight": "bold"}
+                        ),
+                        dcc.DatePickerSingle(
+                            id='date_start_1',
+                            initial_visible_month=date(2016, 1, 20),
+                            display_format='MM Y, DD',
+                            date=date(2016, 1, 20)
+                        ),
+                        dcc.DatePickerSingle(
+                            id='date_end_1',
+                            initial_visible_month=date(2017, 1, 20),
+                            display_format='MM Y, DD',
+                            date=date(2017, 1, 20)
+                        ),
+                        html.P("Select the chemical", 
+                                        style={"height": "auto",
+                                                "margin-bottom": "auto",
+                                                "font-weight": "bold"}
+                        ),
+                        dcc.Dropdown(
+                            id='chemicals_dropdown_2',
+                            options=[{'label': i, 'value': i} for i in chemicals],
+                            multi=False,
+                            value="Нефтепродукты",
+                        ),
+                        html.P("Select the river", 
+                                        style={"height": "auto",
+                                                "margin-bottom": "auto",
+                                                "font-weight": "bold"}
+                        ),
+                        dcc.Dropdown(
+                            id='river_dropdown_2',
+                            options=[{'label': i, 'value': i} for i in rivers],
+                            multi=False,
+                            value="р. Тура, ниже г. Тюмени",
+                        ),
 
-        # Body
-        [html.Tr([
-            html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-        ]) for i in range(min(len(dataframe), max_rows))]
+                    ]
+                )
+            ]
+        )
+    ]
+)
+
+
+@app.callback(
+    Output("map", "figure"),
+    [Input("chemicals_dropdown", "value")],
+)
+def map_update(chemicals):
+    fig = px.scatter_mapbox(
+        data_frame=df_time,
+        lat="Lat",
+        lon="Lon",
+        hover_name="Наименование водного объекта",
+        hover_data=df_time[chemicals],
+        size=np.sum(df_time[chemicals], axis=1)*10,
+        animation_group="Нефтепродукты",
+        animation_frame="Период наблюдений",
+        zoom=5,
+        height=500,
+        center={"lat":56.75, "lon":67.7}
     )
-
-app.layout = html.Div([
-    html.H1('Анализ содержания загрязняющих веществ в водных объектах',
-    ),
-
-    dcc.Markdown("""В ежемесячном режиме осуществляется мониторинг содержания загрязняющих 
-        веществ в водных объектах Тюменской области в части выявления превышений предельных 
-        допустимых концентраций по сведениям, предоставленным Тюменским центром по гидрометеорологии 
-        и мониторингу окружающей среды – филиалом ФГБУ «Обь-Иртышское управление по 
-        гидрометеорологии и мониторингу окружающей среды».
-        Ниже приведен пример обработанного набора данных (0: нет ПДК, 1: ПДК):
-        """
-    ),
-    generate_table(df.sample(5)),
-    dcc.Dropdown(
-        id='river-dropdown',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph'),
-
-    dcc.Dropdown(
-        id='river-dropdown1',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph1'),
-
-    dcc.Dropdown(
-        id='river-dropdown2',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph2'),
-
-    dcc.Dropdown(
-        id='river-dropdown3',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph3'),
-
-    dcc.Dropdown(
-        id='river-dropdown4',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph4'),
-
-    dcc.Dropdown(
-        id='river-dropdown5',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph5'),
-
-    dcc.Dropdown(
-        id='river-dropdown6',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph6'),
-
-    dcc.Dropdown(
-        id='river-dropdown7',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph7'),
-
-    dcc.Dropdown(
-        id='river-dropdown8',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph8'),
-
-    dcc.Dropdown(
-        id='river-dropdown9',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph9'),
-
-    dcc.Dropdown(
-        id='river-dropdown10',
-        options=[{'label': i, 'value': i} for i in df["Наименование водного объекта"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph10'),
-
-    html.H1("Анализ распределения химических веществ", style={"textAlign": "center"}), dcc.Markdown('''
-Ниже представлено распределение по общему содержанию загрязняющих веществ в водных объектах Тюменской области.'''),
-    html.Div([
-        html.Div([
-            html.H3('ПДК химических веществ по рекам 2015-20'),
-            dcc.Graph(id='g1', figure={'data': [{"x":['р. Ишим, в створе с. Абатское',
-                                                     'р. Тура, в створе с. Покровское',
-                                                     'р. Тобол, ниже г. Ялуторовска',
-                                                     'р. Ишим, в створе с. Ильинское',
-                                                     'р. Ишим, выше г. Ишима',
-                                                     'р. Тобол, в створе с. Коркино',
-                                                     'р. Ишим, ниже г. Ишима',
-                                                     'р. Тура, ниже г. Тюмени',
-                                                     'р. Тура, выше г. Тюмени',
-                                                     'р. Тобол, выше г. Ялуторовска',
-                                                     'р. Тура, в створе с. Салаирка',
-                                                     'р. Тобол, в створе с. Иевлево'], 
-              'y': [45, 50, 114, 85, 89, 96, 93, 125, 126, 114, 133, 48], 'type': 'bar'}]})
-        ], className="six columns"),
-
-        html.Div([
-            html.H3('Общее количество химических веществ 2015-20'),
-            dcc.Graph(id='g2', figure={'data': [{'x': ['Азот нитритный',
-                                                       'Азот аммонийный',
-                                                       'Азот нитратный',
-                                                       'Фенол',
-                                                       'Нефтепродукты',
-                                                       'Органические вещества (по ХПК)',
-                                                       'Железо',
-                                                       'Медь',
-                                                       'Цинк',
-                                                       'Марганец',
-                                                       'БПК5'],
- "y": [171, 282, 0, 243, 256, 233, 21, 38, 0, 39, 6], "type": "bar"}]})
-        ], className="six columns"),
-    ], className="row"),
-
-    html.H1("Тренд ПДК по годам", style={"textAlign": "center"}), dcc.Markdown('''
-Распределение суммарного зафиксированных ПДК по годам.'''),
-
-    dcc.Dropdown(
-        id='river-dropdown11',
-        options=[{'label': i, 'value': i} for i in df_years["River"].unique()],
-        multi=True,
-        value=['р. Тура, ниже г. Тюмени']
-    ),
-    dcc.Graph(id='timeseries-graph11'),
-
-])
+    fig.update_layout(mapbox_style="open-street-map")
+    fig.update_layout(margin={"r": 0,"t": 0,"l": 0,"b": 0})
+    return fig
 
 @app.callback(
-    dash.dependencies.Output('timeseries-graph', 'figure'),
-    [dash.dependencies.Input('river-dropdown', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
+    Output("sankey", "figure"),
+    [Input("my-date-picker-single", "date")],
+)
+def map_update(date_value):
+    values = []
+    df_selected = df_time[df_time["Период наблюдений"] == date_value]
+    for river in rivers_list:
+        try:
+            values.append(df_selected[df_selected["Наименование водного объекта"]==river].iloc[0, 2:13].to_list())
+        except:
+            values.append(np.full(11, 0))
 
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Азот нитритный'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Азот нитритный",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph1', 'figure'),
-    [dash.dependencies.Input('river-dropdown1', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Азот аммонийный'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Азот аммонийный",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
+    fig = go.Figure(data=[go.Sankey(
+        node = dict(
+            pad = 30,
+             thickness = 5,
+             line = dict(color = "black", width = 0.2),
+             label = rivers_list,
+             customdata = rivers_list,
+             hovertemplate='Node %{customdata} has total value %{value}<extra></extra>',
+             color = "#049CE0"
+        ),
+        link = dict(
+            source = np.array(source).flatten(),
+            target = np.array(target).flatten(),
+            value = np.array(values).flatten(),
+            label = chemicals*14,
+            color = colours*14,))])
+    fig.update_layout(
+        title_text="Chemicals Sankey Diagram", 
+        font=dict(size = 10, color = 'white')
+    )
+    return fig
 
 @app.callback(
-    dash.dependencies.Output('timeseries-graph2', 'figure'),
-    [dash.dependencies.Input('river-dropdown2', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
+    dash.dependencies.Output("timeseries-graph_2", "figure"),
+    [dash.dependencies.Input("date_start", "date"),
+     dash.dependencies.Input("date_end", "date"),
+     dash.dependencies.Input("date_start_1", "date"),
+     dash.dependencies.Input("date_end_1", "date"),
+     dash.dependencies.Input("chemicals_dropdown_2", "value"),
+     dash.dependencies.Input("river_dropdown_2", "value")]
+)
+def update_output(start_date, end_date, start_date_1, end_date_1, chemicals, river):
+    print(start_date, end_date)
+    fig = make_subplots(rows=2, cols=1)
+    df_time1 = df_time[df_time["Период наблюдений"] > start_date]
+    df_time1 = df_time1[df_time1["Период наблюдений"] < end_date]
+    df_time1 = df_time1[df_time1["Наименование водного объекта"] == river]
+    df_time1 = df_time1.reset_index(drop=True)
+    
+    df_time2 = df_time[df_time["Период наблюдений"] > start_date_1]
+    df_time2 = df_time2[df_time2["Период наблюдений"] < end_date_1]
+    df_time2 = df_time2[df_time2["Наименование водного объекта"] == river]
+    df_time2 = df_time2.reset_index(drop=True)
 
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Азот нитратный'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Азот нитратный",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph3', 'figure'),
-    [dash.dependencies.Input('river-dropdown3', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Фенол'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Фенол",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
+    trace1 = go.Bar(
+    	name=f"{start_date} - {end_date}",
+    	x=df_time1["Период наблюдений"],
+    	y=df_time1[chemicals])
+    trace2 = go.Bar(
+    	name=f"{start_date_1} - {end_date_1}",
+    	x=df_time2["Период наблюдений"],
+    	y=df_time2[chemicals])
+    fig.add_trace(trace1, 1, 1)
+    fig.add_trace(trace2, 2, 1)
+    fig.update_layout(
+        yaxis1 = dict(
+            tickmode = 'array',
+            tickvals = [0, 1, 2],
+            ticktext = ["Normal", "Middle", "High"]),
+        yaxis2 = dict(
+            tickmode = 'array',
+            tickvals = [0, 1, 2],
+            ticktext = ["Normal", "Middle", "High"]),
+        margin={"r": 0,"t": 10,"l": 100,"b": 0},
+        #width=900
+    )
+    return fig
 
 @app.callback(
-    dash.dependencies.Output('timeseries-graph4', 'figure'),
-    [dash.dependencies.Input('river-dropdown4', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
+    dash.dependencies.Output("timeseries-graph_3", "figure"),
+    [dash.dependencies.Input("date_start", "date"),
+     dash.dependencies.Input("date_end", "date"),
+     dash.dependencies.Input("date_start_1", "date"),
+     dash.dependencies.Input("date_end_1", "date"),
+     dash.dependencies.Input("chemicals_dropdown_2", "value"),
+     dash.dependencies.Input("river_dropdown_2", "value")]
+)
+def update_output(start_date, end_date, start_date_1, end_date_1, chemicals, river):
+    print(start_date, end_date)
+    fig = make_subplots(rows=2, cols=1)
+    df_time1 = df_time[df_time["Период наблюдений"] > start_date]
+    df_time1 = df_time1[df_time1["Период наблюдений"] < end_date]
+    df_time1 = df_time1[df_time1["Наименование водного объекта"] == river]
+    df_time1 = df_time1.reset_index(drop=True)
+    
+    df_time2 = df_time[df_time["Период наблюдений"] > start_date_1]
+    df_time2 = df_time2[df_time2["Период наблюдений"] < end_date_1]
+    df_time2 = df_time2[df_time2["Наименование водного объекта"] == river]
+    df_time2 = df_time2.reset_index(drop=True)
 
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]["Нефтепродукты"],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
+    trace1 = go.Bar(
+        name="График 1",
+        x=df_time1["Период наблюдений"],
+        y=df_time1[chemicals])
+    trace2 = go.Bar(
+        name="График 2",
+        x=df_time2["Период наблюдений"],
+        y=df_time2[chemicals])
+    fig.add_trace(trace1, 1, 1)
+    fig.add_trace(trace2, 2, 1)
+    fig.update_layout(
+        yaxis1 = dict(
+            tickmode = 'array',
+            tickvals = [0, 1, 2],
+            ticktext = ["Normal", "Middle", "High"]),
+        yaxis2 = dict(
+            tickmode = 'array',
+            tickvals = [0, 1, 2],
+            ticktext = ["Normal", "Middle", "High"]),
+        margin={"r": 0,"t": 10,"l": 100,"b": 0},
+    )
+    return fig
 
-        'layout': go.Layout(
-            height=250,
-            title="Нефтепродукты",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph5', 'figure'),
-    [dash.dependencies.Input('river-dropdown5', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Органические вещества (по ХПК)'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Органические вещества (по ХПК)",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph6', 'figure'),
-    [dash.dependencies.Input('river-dropdown6', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Железо'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Железо",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph7', 'figure'),
-    [dash.dependencies.Input('river-dropdown7', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Медь'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Медь",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph8', 'figure'),
-    [dash.dependencies.Input('river-dropdown8', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Цинк'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Цинк",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph9', 'figure'),
-    [dash.dependencies.Input('river-dropdown9', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['Марганец'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="Марганец",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph10', 'figure'),
-    [dash.dependencies.Input('river-dropdown10', 'value')])
-def update_graph(river_values):
-    dff = df.loc[df["Наименование водного объекта"].isin(river_values)]
-
-    return {
-        'data': [go.Scatter(
-            x=dff[dff['Наименование водного объекта'] == river]['Период наблюдений'],
-            y=dff[dff['Наименование водного объекта'] == river]['БПК5'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            mode='lines+markers',
-            name=river,
-            marker={
-                'size': 15,
-                'opacity': 0.5,
-                'line': {'width': 0.5, 'color': 'white'}
-            }
-        ) for river in dff['Наименование водного объекта'].unique()],
-
-        'layout': go.Layout(
-            height=250,
-            title="БПК5",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК', "tickvals": [0,1]},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-@app.callback(
-    dash.dependencies.Output('timeseries-graph11', 'figure'),
-    [dash.dependencies.Input('river-dropdown11', 'value')])
-def update_graph(river_values):
-    dff = df_years.loc[df_years["River"].isin(river_values)]
-
-    return {
-        'data': [go.Bar(
-            x=dff[dff['River'] == river]['Year'],
-            y=dff[dff['River'] == river]['Value'],
-            #text="Continent: " +
-            #      f"{dff[dff['Наименование водного объекта'] == river]['continent'].unique()[0]}",
-            #mode='lines+markers',
-            name=river
-            #marker={
-            #    'size': 15,
-            #    'opacity': 0.5,
-            #    'line': {'width': 0.5, 'color': 'white'}
-            #}
-        ) for river in dff['River'].unique()],
-
-        'layout': go.Layout(
-            height=500,
-            title="Общее количество ПДК",
-            xaxis={'title': 'Период наблюдений'},
-            yaxis={'title': 'ПДК'},
-            margin={'l': 60, 'b': 50, 't': 80, 'r': 0},
-            hovermode='closest'
-        )
-    }
-
-
-if __name__ == '__main__':
-    #app.run(debug=False)
-    #app.run_server(debug=True)
-    app.run_server(debug=True, port=PORT)
-    #app.server.run(debug=True, threaded=True)
+if __name__ == "__main__":
+    app.run_server(debug=True)
