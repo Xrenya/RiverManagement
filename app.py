@@ -276,7 +276,7 @@ app.layout = html.Div(
                 dbc.Col(
                     [
                         dcc.Graph(id="sankey"),
-                    ]
+                    ], width=3
                 )
             ]
         ),
@@ -533,7 +533,7 @@ def map_update(month, year):
     fig = go.Figure(data=[go.Sankey(
         node = dict(
             pad = 30,
-            thickness = 5,
+            thickness = 2,
             line = dict(color = "black", width = 0.2),
             label = rivers_list,
             customdata = rivers_list,
