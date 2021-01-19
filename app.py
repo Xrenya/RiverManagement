@@ -13,13 +13,15 @@ import os
 import base64
 import dash_table
 
+
 PORT = 8051
 
-df = pd.read_csv("river_data.csv")
 logo = "assets/logo.jpg"
 legend = "assets/legend.jpg"
+legend1 = "assets/legend.png"
 encoded_image = base64.b64encode(open(logo, "rb").read())
 legend_image = base64.b64encode(open(legend, "rb").read())
+legend_image1 = base64.b64encode(open(legend1, "rb").read())
 rivers = [
     "р. Ишим, выше г. Ишима",
     "р. Ишим, ниже г. Ишима",
@@ -75,7 +77,20 @@ months = [
     "Ноябрь",
     "Декабрь",
 ]
-years = df.groupby("Год").nunique().index.to_list()
+months_dic = {
+    1: "Январь",
+    2: "Февраль",
+    3: "Март",
+    4: "Апрель",
+    5: "Май",
+    6: "Июнь",
+    7: "Июль",
+    8: "Август",
+    9: "Сентябрь",
+    10: "Октябрь",
+    11: "Ноябрь",
+    12: "Декабрь",
+}
 source = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  
@@ -85,6 +100,7 @@ source = [
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
     9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
     10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
     11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
@@ -99,6 +115,7 @@ target = [
     6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
     10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
     11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
     12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
@@ -106,9 +123,10 @@ target = [
 ]
 out_df = pd.DataFrame(
     {
-        "Аббревиатура": ["НЗ", "ВЗ", "ЭВЗ"],
-        "Числовой код": [0, 1, 2],
-        "Расшифровка": ["Незначительное загрязнение/нет загрязнения",
+        "Аббревиатура": ["ВПН", "НЗ", "ВЗ", "ЭВЗ"],
+        "Числовой код": [0, 1, 2, 3],
+        "Расшифровка": ["В пределах нормы",
+                        "Незначительное загрязнение",
                         "Высокое загрязнение",
                         "Экстремально высоким загрязнением"]
         }
@@ -139,7 +157,7 @@ colours = [
     "#8b4513",
     "#708090",
     "#d2b48c",
-    "#6a5acd",
+    "#1977d6",
     "#ff4500",
 ]
 color_dict = {
@@ -152,11 +170,48 @@ color_dict = {
     "Железо": "#8b4513",
     "Медь": "#708090",
     "Цинк": "#d2b48c",
-    "Марганец": "#6a5acd",
+    "Марганец": "#1977d6",
     "БПК5": "#ff4500",
 }
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = dash.Dash(external_stylesheets=external_stylesheets)
+
+def reader(csv):
+    df = pd.read_csv(csv, encoding="cp1251", delimiter=";")
+    for chem in chemicals:
+        df[chem] = df[chem].apply(lambda x: x.replace(",", "."))
+        df[chem] = df[chem].replace({"в пределах нормы": "0",
+                                                "В пределах нормы ": "0",
+                                                "В пределах нормы": "0"})
+        df[chem] = df[chem].replace({"Выше нормы": "2", 
+                                                "выше ПДК": "2",
+                                                "Выше ПДК": "2"})
+        df[chem] = df[chem].apply(lambda x: x.replace(" ", "0"))
+        df[chem] = df[chem].apply(lambda x: x.replace("-", "0"))
+        
+    for chem in chemicals:
+        df[chem] = pd.to_numeric(df[chem], errors='coerce')
+        df[chem] = df[chem].apply(lambda x: 1 if (x<4) and (x!=2) and (x!=0) else x)
+        df[chem] = df[chem].apply(lambda x: 3 if x>=4 else x)
+        df[chem] = df[chem].apply(lambda x: int(x))
+        
+    for i in range(len(df)):
+        df.iloc[i, 1] = df.iloc[i, 1].replace(", ПДК", "")
+        df.iloc[i, 1] = df.iloc[i, 1].replace(", превышение ПДК", "")
+        df.iloc[i, 1] = df.iloc[i, 1].replace("в створе", "створ")
+        if df.iloc[i, 1] == "р. Тобол, с. Иевлево":
+            df.iloc[i, 1] = "р. Тобол, створ с. Иевлево"
+    
+    df = df.loc[df['Наименование водного объекта'] != ' ']
+    df["Год"] = pd.DatetimeIndex(df["Период наблюдений"]).year
+    df["Месяц"] = pd.DatetimeIndex(df["Период наблюдений"]).month
+    df["Период наблюдений"] = pd.to_datetime(df["Период наблюдений"]).dt.to_period('M')
+    df = df.sort_values(by=["Период наблюдений"])
+    df.reset_index(drop=True)
+    return df
+
+df = reader("7202136720.76.2.csv")
+years = df.groupby("Год").nunique().index.to_list()
 
 # Associating server
 server = app.server
@@ -197,8 +252,105 @@ app.layout = html.Div(
                 "font-size": "16px",
                 "padding": "5px"
             }
+        ),        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                           html.Div(
+                                [
+                                    html.P("Выберите химические вещество(а):", 
+                                           style={
+                                               "height": "auto",
+                                               "margin-bottom": "auto",
+                                               "font-weight": "bold"
+                                            }
+                                    ),
+                                    
+                                    dcc.Dropdown(
+                                        id="chemicals_dropdown_b",
+                                        options=[{"label" : i, "value" : i} for i in chemicals],
+                                        multi=True,
+                                        value=["Нефтепродукты"],
+                                    ),            
+                                ]
+                            )
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.Div(
+                            [
+                                html.P("Выберите створ реки и период наблюдения:",
+                                       style={
+                                           "height": "auto",
+                                           "margin-bottom": "auto",
+                                           "font-weight": "bold"
+                                        }
+                                ),
+                                dbc.Row(
+                                    [
+                                        dcc.Dropdown(
+                                            id="river_dropdown_b",
+                                            options=[{"label": i, "value": i} for i in rivers],
+                                            multi=False,
+                                            placeholder="Выберите створ реки:",
+                                            style={
+                                                "width": "300px",
+                                                "display": "inline-block"
+                                            },
+                                            value="р. Тура, створ с. Салаирка",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="months_sb",
+                                            options=[{"label" : i, "value" : i} for i in months],
+                                            multi=False,
+                                            value="Январь",
+                                            placeholder="Выберите месяц:",
+                                            style={
+                                                "width": "130px",
+                                                "display": "inline-block"
+                                            }
+                                        ),
+                                        dcc.Dropdown(
+                                            id="months_eb",
+                                            options=[{"label" : i, "value" : i} for i in months],
+                                            multi=False,
+                                            value="Декабрь",
+                                            placeholder="Выберите месяц:",
+                                            style={
+                                                "width": "130px",
+                                                "display": "inline-block"
+                                            }
+                                        ),
+                                        dcc.Dropdown(
+                                            id="years_b",
+                                            options=[{"label" : i, "value" : i} for i in years],
+                                            multi=False,
+                                            value=2015,
+                                            placeholder="Выберите год:",
+                                            style={
+                                                "width": "130px",
+                                                "display": "inline-block"
+                                            }
+                                        ),
+                                    ],
+                                ),
+                            ]
+                        )
+                    ]
+                ),
+            ]
         ),
-        
+        dbc.Row(
+            [
+                
+                dbc.Col(
+                    [
+                        dcc.Graph(id="timeseries-graph_3")
+                    ],
+                ),
+            ]
+        ),
         dbc.Row(
             [
                 dbc.Col(
@@ -240,23 +392,23 @@ app.layout = html.Div(
                                             id="months_0",
                                             options=[{"label" : i, "value" : i} for i in months],
                                             multi=False,
-                                            value=2015,
                                             placeholder="Выберите месяц:",
                                             style={
                                                 "width": "300px",
                                                 "display": "inline-block"
-                                            }
+                                            },
+                                            value="Январь",
                                         ),
                                         dcc.Dropdown(
                                             id="years_0",
                                             options=[{"label" : i, "value" : i} for i in years],
                                             multi=False,
-                                            value="Январь",
                                             placeholder="Выберите год:",
                                             style={
-                                                "width": "300px",
+                                                "width": "260px",
                                                 "display": "inline-block"
-                                            }
+                                            },
+                                            value=2015,
                                         ),
                                     ],
                                 ),
@@ -273,13 +425,25 @@ app.layout = html.Div(
                         dcc.Graph(id="map"),
                     ]
                 ),
+            ]
+        ),
+        html.P("Распространение химических веществ:",
+                        style={
+                           "height": "auto",
+                           "margin-bottom": "auto",
+                           "font-weight": "bold"
+                        }
+        ),
+        dbc.Row(
+            [
                 dbc.Col(
                     [
                         dcc.Graph(id="sankey"),
-                    ], width=3
+                    ],
                 )
             ]
         ),
+        
         dbc.Row(
             [
                 dbc.Col(
@@ -292,7 +456,7 @@ app.layout = html.Div(
                                 }
                         ),
                         dash_table.DataTable(
-                            id='table',
+                            id='table1',
                             columns=[{"name": i, "id": i} for i in out_df.columns],
                             data=out_df.to_dict('records'),
                             style_table={
@@ -333,18 +497,18 @@ app.layout = html.Div(
                     [
                         html.Div(
                             [
-                            html.Div(
-                                    "Цветовая схема загрязняющих веществ:",
+                                html.Div(
+                                        "Цветовая схема загрязняющих веществ:",
+                                        style={
+                                            "font-size": "16px",
+                                        }
+                                ),
+                                html.Img(
+                                    src="data:image/png;base64,{}".format(legend_image1.decode()),
                                     style={
-                                        "font-size": "16px",
+                                        "height": "200px"
                                     }
-                            ),
-                            html.Img(
-                                src="data:image/png;base64,{}".format(legend_image.decode()),
-                                style={
-                                    "height": "200px"
-                                }
-                            )
+                                )
                             ]
                         ),
                     ]
@@ -493,8 +657,7 @@ def map_plot(df, chemicals):
             marker=dict(size=df[df["Наименование водного объекта"]==river][chemicals].sum(axis=1)*10, color=location_dic[river][2]),
             textfont=dict(size=16, color='black'),
             name=river,
-            hovertext=hover
-            ,
+            hovertext=hover,
     ))
     fig.update_layout(mapbox_style="open-street-map")
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
@@ -512,6 +675,7 @@ def map_plot(df, chemicals):
      Input("years_0", "value")],
 )
 def map_update(chemicals, month, year):
+    df["Месяц"] = df["Месяц"].replace(months_dic)
     df_selected = df[(df["Год"] == year) & (df["Месяц"] == month)]
     fig = map_plot(df_selected, chemicals)
     return fig
@@ -523,6 +687,7 @@ def map_update(chemicals, month, year):
 )
 def map_update(month, year):
     values = []
+    df["Месяц"] = df["Месяц"].replace(months_dic)
     df_selected = df[(df["Год"] == year) & (df["Месяц"] == month)]
     for river in rivers_list:
         try:
@@ -530,24 +695,26 @@ def map_update(month, year):
         except:
             values.append(np.full(11, 0))
 
-    fig = go.Figure(data=[go.Sankey(
-        node = dict(
-            pad = 30,
-            thickness = 2,
-            line = dict(color = "black", width = 0.2),
-            label = rivers_list,
-            customdata = rivers_list,
-            hovertemplate="%{customdata} имеет общее кол-во превышении %{value}<extra></extra>",
-            color = "#049CE0"
-        ),
-        link = dict(
-            source = source,
-            target = target,
-            value = np.array(values).flatten(),
-            label = chemicals*14,
-            color = colours*14,
-        )
-        )])
+    fig = go.Figure(
+        data = [go.Sankey(
+            node = dict(
+                pad = 30,
+                thickness = 2,
+                line = dict(color = "black", width = 0.2),
+                label = rivers_list,
+                customdata = rivers_list,
+                hovertemplate="%{customdata} имеет общее кол-во превышении %{value}<extra></extra>",
+                color = "#049CE0"
+            ),
+            link = dict(
+                source = source,
+                target = target,
+                value = np.array(values).flatten(),
+                label = chemicals*14,
+                color = colours*14,
+            )
+        )]
+    )
     fig.update_layout(
         title_text="Диаграмма распространения химических вещевств", 
         font={
@@ -580,7 +747,6 @@ def plots(df_1, df_2, chemicals, period_1, period_2):
         fig.add_trace(plot_2, 2, 1)
     if isinstance(chemicals, list):
         for chem in chemicals:
-            print(chem)
             plot_1.append(f"trace_{count}")
             plot_1[count] = go.Bar(
                 x=df_1["Месяц"],
@@ -615,6 +781,7 @@ def update_output(start_month1, end_month1, year1, start_month2, end_month2, yea
     index_1 = months[months.index(start_month1):months.index(end_month1)+1]
     index_2 = months[months.index(start_month2):months.index(end_month2)+1]
     df_river = df[df["Наименование водного объекта"]==river_data]
+    df_river["Месяц"] = df_river["Месяц"].replace(months_dic)
     selected_1 = df_river[df_river["Месяц"].isin(index_1)]
     df_time1 = selected_1[selected_1["Год"]==year1]
     selected_2 = df_river[df_river["Месяц"].isin(index_2)]
@@ -625,17 +792,80 @@ def update_output(start_month1, end_month1, year1, start_month2, end_month2, yea
     fig.update_layout(
         yaxis1 = dict(
             tickmode = "array",
-            tickvals = [0, 1, 2],
-            ticktext = ["НЗ", "ВЗ", "ЭВЗ"]),
-        yaxis2 = dict(
-            tickmode = "array",
-            tickvals = [0, 1, 2],
-            ticktext = ["НЗ", "ВЗ", "ЭВЗ"]),
+            tickvals = [0, 1, 2, 3],
+            ticktext = ["ВПН", "НЗ", "ВЗ", "ЭВЗ"]),
         margin={"r": 0,"t": 20,"l": 0,"b": 0},
         #width=900
     )
-    fig.update_yaxes(range=[0, 2], row=1, col=1)
-    fig.update_yaxes(range=[0, 2], row=2, col=1)
+    fig.update_layout(
+        yaxis2 = dict(
+            tickmode = "array",
+            tickvals = [0, 1, 2, 3],
+            ticktext = ["ВПН", "НЗ", "ВЗ", "ЭВЗ"]),
+        margin={"r": 0,"t": 20,"l": 0,"b": 0},
+        #width=900
+    )
+    fig.update_yaxes(range=[0, 3], row=1, col=1)
+    fig.update_yaxes(range=[0, 3], row=2, col=1)
+    return fig
+def main_plot(df_1, chemicals):
+    count = 0
+    plot_1 = []
+    fig = go.Figure()
+    if isinstance(chemicals, str):
+        plot_1 = go.Bar(
+            x=df_1["Месяц"],
+            y=df_1[chemicals],
+            name=chemicals,
+            marker_color=color_dict[chemicals]
+        )
+        fig.add_trace(plot_1)
+    if isinstance(chemicals, list):
+        for chem in chemicals:
+            plot_1.append(f"trace_{count}")
+            plot_1[count] = go.Bar(
+                x=df_1["Месяц"],
+                y=df_1[chem],
+                name=chem,
+                marker_color=color_dict[chem]
+            )
+            fig.add_trace(plot_1[count])
+            count+=1
+    return fig
+@app.callback(
+    Output("timeseries-graph_3", "figure"),
+    [Input("months_sb", "value"),
+     Input("months_eb", "value"),
+     Input("years_b", "value"),
+     Input("river_dropdown_b", "value"),
+     Input("chemicals_dropdown_b", "value")]
+)
+def update_output(start_month1, end_month1, year1, river_data, chemical):
+    print(months[months.index(start_month1):months.index(end_month1)+1])
+    index_1 = months[months.index(start_month1):months.index(end_month1)+1]
+    df_river = df[df["Наименование водного объекта"]==river_data]
+    df_river["Месяц"] = df_river["Месяц"].replace(months_dic)
+    selected_1 = df_river[df_river["Месяц"].isin(index_1)]
+    df_time1 = selected_1[selected_1["Год"]==year1]
+    period_1 = f"{start_month1}-{end_month1} {year1}"
+    fig = main_plot(df_time1, chemical)
+    fig.update_layout(
+        yaxis1 = dict(
+            tickmode = "array",
+            tickvals = [0, 1, 2, 3],
+            ticktext = ["ВПН", "НЗ", "ВЗ", "ЭВЗ"]
+        ),
+        margin={"r": 0,"t": 30,"l": 0,"b": 0},
+        height=300,
+    )
+    fig.update_yaxes(range=[0, 3])
+    fig.update_layout(
+        title={
+            'text': period_1,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'}
+    )
     return fig
 
 if __name__ == "__main__":
