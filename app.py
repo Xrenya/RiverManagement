@@ -874,7 +874,7 @@ def update_output(start_month1, end_month1, year1, river_data, chemical):
             tickvals = [0, 1, 2, 3],
             ticktext = ["ВПН", "НЗ", "ВЗ", "ЭВЗ"]
         ),
-        margin={"r": 0,"t": 30,"l": 0,"b": 0},
+        margin={"r": 30,"t": 30,"l": 30,"b": 0},
         height=300,
     )
     fig.update_yaxes(range=[0, 3])
