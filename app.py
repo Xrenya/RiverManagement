@@ -666,9 +666,9 @@ def map_plot(df, chemicals):
     for river in rivers:
         hover = []
         for chem in chemicals:
-            val = df[df["Наименование водного объекта"]==river][chem]
-            hover.append(f"{val} <br>")
-            print(hover)
+            val = df[df["Наименование водного объекта"]==river][chem].to_list()
+            hover.append(f"{chem}: {val}")
+            hovertemplate="<br>".join(hover)
         fig.add_trace(go.Scattermapbox(
             lat=[location_dic[river][0]],
             lon=[location_dic[river][1]],
@@ -676,7 +676,7 @@ def map_plot(df, chemicals):
             marker=dict(size=df[df["Наименование водного объекта"]==river][chemicals].sum(axis=1)*10, color=location_dic[river][2]),
             textfont=dict(size=16, color='black'),
             name=river,
-            hovertext=hover,
+            hovertext=hovertemplate,
     ))
     fig.update_layout(mapbox_style="open-street-map")
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
