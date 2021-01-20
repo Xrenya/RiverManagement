@@ -17,11 +17,9 @@ import dash_table
 PORT = 8051
 
 logo = "assets/logo.jpg"
-legend = "assets/legend.jpg"
-legend1 = "assets/legend.png"
+legend = "assets/legend.png"
 encoded_image = base64.b64encode(open(logo, "rb").read())
 legend_image = base64.b64encode(open(legend, "rb").read())
-legend_image1 = base64.b64encode(open(legend1, "rb").read())
 rivers = [
     "р. Ишим, выше г. Ишима",
     "р. Ишим, ниже г. Ишима",
@@ -244,15 +242,16 @@ app.layout = html.Div(
             Анализ включает в себя 12 наименований физико-химических веществ: 
             взвешенные и органические вещества, биогенные элементы (соединения азота и фосфора), 
             металлы, нефтепродукты и другие.
-            Ниже представлена карта с 12-ти створами со степенью загрязнения и
-            диаграммой распространения химических вещевств между ними.
+            Ниже представлена гистограмма с уровнем загрязнения водных объектов (Установите желаемые тип загрязнения, створ реки и период наблюдения).
             """, 
             style={
                 "display": "inline-block",
                 "font-size": "16px",
-                "padding": "5px"
+                "padding": "5px",
+                "margin-left": "2px"
             }
-        ),        dbc.Row(
+        ),
+        dbc.Row(
             [
                 dbc.Col(
                     [
@@ -262,7 +261,8 @@ app.layout = html.Div(
                                            style={
                                                "height": "auto",
                                                "margin-bottom": "auto",
-                                               "font-weight": "bold"
+                                               "font-weight": "bold",
+                                               "margin-left": "5px"
                                             }
                                     ),
                                     
@@ -351,6 +351,21 @@ app.layout = html.Div(
                 ),
             ]
         ),
+        html.Div(
+            """
+            Ниже представлена карта с 12-ти створами со степенью загрязнения и
+            диаграммой распространения химических вещевств между ними. 
+            Видимость створов на карте регулируется нажатием на него (одно нажатие - отключить видимость, двойное нажатие - выделение), используя легенду.
+            В правом верхнем углу карты можете сохранить изогражение (иконка "камеры"), 
+            восстановить карту в исходное положение (иконка "домика") и т.д.
+            """, 
+            style={
+                "display": "inline-block",
+                "font-size": "16px",
+                "padding": "5px",
+                "margin-left": "2px"
+            }
+        ),
         dbc.Row(
             [
                 dbc.Col(
@@ -361,7 +376,8 @@ app.layout = html.Div(
                                            style={
                                                "height": "auto",
                                                "margin-bottom": "auto",
-                                               "font-weight": "bold"
+                                               "font-weight": "bold",
+                                               "margin-left": "5px"
                                             }
                                     ),
                                     
@@ -369,7 +385,7 @@ app.layout = html.Div(
                                         id="chemicals_dropdown",
                                         options=[{"label" : i, "value" : i} for i in chemicals],
                                         multi=True,
-                                        value=["Нефтепродукты"],
+                                        value=["Азот нитритный"],
                                     ),            
                                 ]
                             )
@@ -427,11 +443,12 @@ app.layout = html.Div(
                 ),
             ]
         ),
-        html.P("Распространение химических веществ:",
+        html.P("Визуализация потока загрязняющих веществ между створами со степенью загрязнения:",
                         style={
                            "height": "auto",
                            "margin-bottom": "auto",
-                           "font-weight": "bold"
+                           "font-weight": "bold",
+                           "margin-left": "5px"
                         }
         ),
         dbc.Row(
@@ -452,7 +469,8 @@ app.layout = html.Div(
                                 "Расшифровка условных обозначений:",
                                 style={
                                     "font-size": "16px",
-                                    "margin-bottom": "30px"
+                                    "margin-bottom": "30px",
+                                    "margin-left": "5px"
                                 }
                         ),
                         dash_table.DataTable(
@@ -504,7 +522,7 @@ app.layout = html.Div(
                                         }
                                 ),
                                 html.Img(
-                                    src="data:image/png;base64,{}".format(legend_image1.decode()),
+                                    src="data:image/png;base64,{}".format(legend_image.decode()),
                                     style={
                                         "height": "200px"
                                     }
@@ -515,7 +533,8 @@ app.layout = html.Div(
                 ),
             ]
         ),
-        dcc.Markdown("Динамика изменения загрязнения водных объектов:"),
+        dcc.Markdown("Ниже представлена диаграмма динамики изменения загрязнения водных объектов для сравнения в установленные временные промежутки:",
+                     style={"margin-left": "6px"}),
         dbc.Row(
             [
                 dbc.Col(
@@ -612,7 +631,7 @@ app.layout = html.Div(
                             id="chemicals_dropdown_2",
                             options=[{"label": i, "value": i} for i in chemicals],
                             multi=True,
-                            value="Марганец",
+                            value=["Нефтепродукты"],
                         ),
                         html.P(
                             "Выберите створ реки:",
@@ -664,7 +683,7 @@ def map_plot(df, chemicals):
     fig.update_layout(
         mapbox=dict(
             center=go.layout.mapbox.Center(lat=56.6, lon=68),
-            zoom=5.5
+            zoom=6
         )
     )
     return fig
@@ -685,7 +704,7 @@ def map_update(chemicals, month, year):
     [Input("months_0", "value"),
      Input("years_0", "value")],
 )
-def map_update(month, year):
+def sankey_update(month, year):
     values = []
     df["Месяц"] = df["Месяц"].replace(months_dic)
     df_selected = df[(df["Год"] == year) & (df["Месяц"] == month)]
@@ -794,7 +813,7 @@ def update_output(start_month1, end_month1, year1, start_month2, end_month2, yea
             tickmode = "array",
             tickvals = [0, 1, 2, 3],
             ticktext = ["ВПН", "НЗ", "ВЗ", "ЭВЗ"]),
-        margin={"r": 0,"t": 20,"l": 0,"b": 0},
+        margin={"r": 0,"t": 20,"l": 50,"b": 0},
         #width=900
     )
     fig.update_layout(
@@ -802,7 +821,7 @@ def update_output(start_month1, end_month1, year1, start_month2, end_month2, yea
             tickmode = "array",
             tickvals = [0, 1, 2, 3],
             ticktext = ["ВПН", "НЗ", "ВЗ", "ЭВЗ"]),
-        margin={"r": 0,"t": 20,"l": 0,"b": 0},
+        margin={"r": 0,"t": 20,"l": 50,"b": 0},
         #width=900
     )
     fig.update_yaxes(range=[0, 3], row=1, col=1)
