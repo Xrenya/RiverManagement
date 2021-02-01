@@ -191,7 +191,7 @@ app = dash.Dash(external_stylesheets=external_stylesheets)
 def reader(csv):
     df = pd.read_csv(csv, encoding="cp1251", delimiter=";")
         
-    for chem in ["Медь"]:
+    for chem in chemicals:
         df[chem] = df[chem].apply(lambda x: x.replace(",", "."))
         for row in range(len(df)):
             value = df.loc[row, chem]
