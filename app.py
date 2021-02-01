@@ -15,6 +15,7 @@ import dash_table
 
 
 PORT = 8051
+HOST = "10.10.28.22"
 
 logo = "assets/logo.jpg"
 legend = "assets/legend.png"
@@ -190,22 +191,24 @@ app = dash.Dash(external_stylesheets=external_stylesheets)
 def reader(csv):
     df = pd.read_csv(csv, encoding="cp1251", delimiter=";")
         
-    for chem in chemicals:
+    for chem in ["Медь"]:
         df[chem] = df[chem].apply(lambda x: x.replace(",", "."))
         for row in range(len(df)):
+            print(row, df.loc[row, "Период наблюдений"], df.loc[row, chem])
             value = df.loc[row, chem]
             if (value=="в пределах нормы") or (value=="В пределах нормы ") or (value=="В пределах нормы"):
                 df.loc[row, chem] = "0"
             elif (value=="Выше нормы") or (value=="выше ПДК ") or (value=="Выше ПДК") or (value=="выше ПДК"):
-                df.loc[row, chem] = "2"
+                df.loc[row, chem] = "1"
             elif (value==" ") or (value=="-"):
                 df.loc[row, chem] = "0"
             elif (float(value)>=PDK[chem][0]) and (float(value)<=PDK[chem][1]):
-                df.loc[row, chem] = "3"
+                df.loc[row, chem] = "2"
             elif (float(value)>PDK[chem][1]):
-                df.loc[row, chem] = "4"
+                df.loc[row, chem] = "3"
             else:
                 df.loc[row, chem] = "1"
+            print(row, df.loc[row, "Период наблюдений"], df.loc[row, chem])
         df[chem] = pd.to_numeric(df[chem], errors='coerce')
         
     for i in range(len(df)):
@@ -904,3 +907,4 @@ def update_output(start_month1, end_month1, year1, river_data, chemical):
 
 if __name__ == "__main__":
     app.run_server(debug=True)
+    #app.run_server(debug=True, port=PORT, host=HOST)
