@@ -171,27 +171,42 @@ color_dict = {
     "Марганец": "#1977d6",
     "БПК5": "#ff4500",
 }
+PDK = {
+    "Азот нитритный": [10, 50],
+    "Азот аммонийный": [10, 50],
+    "Азот нитратный": [10, 50],
+    "Фенол": [30, 50],
+    "Нефтепродукты": [30, 50],
+    "Органические вещества (по ХПК)": [10, 50],
+    "Железо": [30, 50],
+    "Медь": [30, 50],
+    "Цинк": [10, 50],
+    "Марганец": [30, 50],
+    "БПК5": [5, 20]
+}
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = dash.Dash(external_stylesheets=external_stylesheets)
 
 def reader(csv):
     df = pd.read_csv(csv, encoding="cp1251", delimiter=";")
-    for chem in chemicals:
-        df[chem] = df[chem].apply(lambda x: x.replace(",", "."))
-        df[chem] = df[chem].replace({"в пределах нормы": "0",
-                                                "В пределах нормы ": "0",
-                                                "В пределах нормы": "0"})
-        df[chem] = df[chem].replace({"Выше нормы": "2", 
-                                                "выше ПДК": "2",
-                                                "Выше ПДК": "2"})
-        df[chem] = df[chem].apply(lambda x: x.replace(" ", "0"))
-        df[chem] = df[chem].apply(lambda x: x.replace("-", "0"))
         
     for chem in chemicals:
+        df[chem] = df[chem].apply(lambda x: x.replace(",", "."))
+        for row in range(len(df)):
+            value = df.loc[row, chem]
+            if (value=="в пределах нормы") or (value=="В пределах нормы ") or (value=="В пределах нормы"):
+                df.loc[row, chem] = "0"
+            elif (value=="Выше нормы") or (value=="выше ПДК ") or (value=="Выше ПДК") or (value=="выше ПДК"):
+                df.loc[row, chem] = "2"
+            elif (value==" ") or (value=="-"):
+                df.loc[row, chem] = "0"
+            elif (float(value)>=PDK[chem][0]) and (float(value)<=PDK[chem][1]):
+                df.loc[row, chem] = "3"
+            elif (float(value)>PDK[chem][1]):
+                df.loc[row, chem] = "4"
+            else:
+                df.loc[row, chem] = "1"
         df[chem] = pd.to_numeric(df[chem], errors='coerce')
-        df[chem] = df[chem].apply(lambda x: 1 if (x<4) and (x!=2) and (x!=0) else x)
-        df[chem] = df[chem].apply(lambda x: 3 if x>=4 else x)
-        df[chem] = df[chem].apply(lambda x: int(x))
         
     for i in range(len(df)):
         df.iloc[i, 1] = df.iloc[i, 1].replace(", ПДК", "")
