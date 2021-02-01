@@ -876,7 +876,6 @@ def main_plot(df_1, chemicals):
      Input("chemicals_dropdown_b", "value")]
 )
 def update_output(start_month1, end_month1, year1, river_data, chemical):
-    print(months[months.index(start_month1):months.index(end_month1)+1])
     index_1 = months[months.index(start_month1):months.index(end_month1)+1]
     df_river = df[df["Наименование водного объекта"]==river_data]
     df_river["Месяц"] = df_river["Месяц"].replace(months_dic)
