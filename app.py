@@ -197,7 +197,7 @@ def reader(csv):
             value = df.loc[row, chem]
             if (value=="в пределах нормы") or (value=="В пределах нормы ") or (value=="В пределах нормы"):
                 df.loc[row, chem] = "0"
-            elif (value=="Выше нормы") or (value=="выше ПДК ") or (value=="Выше ПДК") or (value=="выше ПДК"):
+            elif (value=="Выше нормы") or (value=="выше ПДК ") or (value=="Выше ПДК") or (value=="выше ПДК") or (value=="выше нормы"):
                 df.loc[row, chem] = "1"
             elif (value==" ") or (value=="-"):
                 df.loc[row, chem] = "0"
@@ -285,6 +285,7 @@ app.layout = html.Div(
                                     dcc.Dropdown(
                                         id="chemicals_dropdown_b",
                                         options=[{"label" : i, "value" : i} for i in chemicals],
+                                        placeholder="Выберите химические вещество(а):",
                                         multi=True,
                                         value=["Нефтепродукты"],
                                     ),            
@@ -400,6 +401,7 @@ app.layout = html.Div(
                                     dcc.Dropdown(
                                         id="chemicals_dropdown",
                                         options=[{"label" : i, "value" : i} for i in chemicals],
+                                        placeholder="Выберите химические вещество(а):",
                                         multi=True,
                                         value=["Азот нитритный"],
                                     ),            
@@ -646,6 +648,7 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="chemicals_dropdown_2",
                             options=[{"label": i, "value": i} for i in chemicals],
+                            placeholder="Выберите химические вещество(а):",
                             multi=True,
                             value=["Нефтепродукты"],
                         ),
@@ -658,6 +661,7 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="river_dropdown_2",
                             options=[{"label": i, "value": i} for i in rivers],
+                            placeholder="Выберите створ реки:",
                             multi=False,
                             value="р. Тура, створ с. Салаирка",
                         ),
@@ -678,22 +682,50 @@ app.layout = html.Div(
 )
 
 def map_plot(df, chemicals):
+    chemicals_drop = [
+        "Азот нитритный",
+        "Азот аммонийный",
+        "Азот нитратный",
+        "Фенол",
+        "Нефтепродукты",
+        "Органические вещества (по ХПК)",
+        "Железо",
+        "Медь",
+        "Цинк",
+        "Марганец",
+        "БПК5"
+    ]
     fig = go.Figure()
     for river in rivers:
         hover = []
-        for chem in chemicals:
-            val = df[df["Наименование водного объекта"]==river][chem].to_list()
-            hover.append(f"{chem}: {val}")
-            hovertemplate="<br>".join(hover)
-        fig.add_trace(go.Scattermapbox(
-            lat=[location_dic[river][0]],
-            lon=[location_dic[river][1]],
-            mode='markers',
-            marker=dict(size=df[df["Наименование водного объекта"]==river][chemicals].sum(axis=1)*10, color=location_dic[river][2]),
-            textfont=dict(size=16, color='black'),
-            name=river,
-            hovertext=hovertemplate,
-    ))
+        if chemicals == []:
+            for chem in chemicals_drop:
+                val = df[df["Наименование водного объекта"]==river][chem].to_list()
+                hover.append(f"{chem}: {val}")
+                hovertemplate="<br>".join(hover)
+            fig.add_trace(go.Scattermapbox(
+                lat=[location_dic[river][0]],
+                lon=[location_dic[river][1]],
+                mode='markers',
+                marker=dict(size=df[df["Наименование водного объекта"]==river][chemicals_drop].sum(axis=1)*10, color=location_dic[river][2]),
+                textfont=dict(size=16, color='black'),
+                name=river,
+                hovertext=hovertemplate,
+            ))
+        else:
+            for chem in chemicals:
+                val = df[df["Наименование водного объекта"]==river][chem].to_list()
+                hover.append(f"{chem}: {val}")
+                hovertemplate="<br>".join(hover)
+            fig.add_trace(go.Scattermapbox(
+                lat=[location_dic[river][0]],
+                lon=[location_dic[river][1]],
+                mode='markers',
+                marker=dict(size=df[df["Наименование водного объекта"]==river][chemicals].sum(axis=1)*10, color=location_dic[river][2]),
+                textfont=dict(size=16, color='black'),
+                name=river,
+                hovertext=hovertemplate,
+            ))
     fig.update_layout(mapbox_style="open-street-map")
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
     fig.update_layout(
@@ -711,7 +743,7 @@ def map_plot(df, chemicals):
 )
 def map_update(chemicals, month, year):
     df["Месяц"] = df["Месяц"].replace(months_dic)
-    df_selected = df[(df["Год"] == year) & (df["Месяц"] == month)]
+    df_selected = df[(df["Год"] == year) & (df["Месяц"] == month)].copy()
     fig = map_plot(df_selected, chemicals)
     return fig
 
@@ -724,6 +756,7 @@ def sankey_update(month, year):
     values = []
     df["Месяц"] = df["Месяц"].replace(months_dic)
     df_selected = df[(df["Год"] == year) & (df["Месяц"] == month)]
+    
     for river in rivers_list:
         try:
             values.append(df_selected[df_selected["Наименование водного объекта"]==river].iloc[0, 2:13].to_list())
@@ -760,10 +793,43 @@ def sankey_update(month, year):
     return fig
 
 def plots(df_1, df_2, chemicals, period_1, period_2):
+    chemicals_drop = [
+        "Азот нитритный",
+        "Азот аммонийный",
+        "Азот нитратный",
+        "Фенол",
+        "Нефтепродукты",
+        "Органические вещества (по ХПК)",
+        "Железо",
+        "Медь",
+        "Цинк",
+        "Марганец",
+        "БПК5"
+    ]
     count = 0
     plot_1 = []
     plot_2 = []
     fig = make_subplots(rows=2, cols=1, subplot_titles=(f"{period_1}", f"{period_2}"))
+    if chemicals==[]:
+        for chem in chemicals_drop:
+            plot_1.append(f"trace_{count}")
+            plot_1[count] = go.Bar(
+                x=df_1["Месяц"],
+                y=df_1[chem],
+                name=chem,
+                marker_color=color_dict[chem]
+            )
+            plot_2.append(f"trace_{count}")
+            plot_2[count] = go.Bar(
+                x=df_2["Месяц"],
+                y=df_2[chem],
+                name=chem,
+                marker_color=color_dict[chem],
+                showlegend=False,
+            )
+            fig.add_trace(plot_1[count], 1, 1)
+            fig.add_trace(plot_2[count], 2, 1)
+            count+=1
     if isinstance(chemicals, str):
         plot_1 = go.Bar(
             x=df_1["Месяц"],
@@ -815,7 +881,7 @@ def plots(df_1, df_2, chemicals, period_1, period_2):
 def update_output(start_month1, end_month1, year1, start_month2, end_month2, year2, river_data, chemical):
     index_1 = months[months.index(start_month1):months.index(end_month1)+1]
     index_2 = months[months.index(start_month2):months.index(end_month2)+1]
-    df_river = df[df["Наименование водного объекта"]==river_data]
+    df_river = df[df["Наименование водного объекта"]==river_data].copy()
     df_river["Месяц"] = df_river["Месяц"].replace(months_dic)
     selected_1 = df_river[df_river["Месяц"].isin(index_1)]
     df_time1 = selected_1[selected_1["Год"]==year1]
@@ -844,9 +910,33 @@ def update_output(start_month1, end_month1, year1, start_month2, end_month2, yea
     fig.update_yaxes(range=[0, 3], row=2, col=1)
     return fig
 def main_plot(df_1, chemicals):
+    chemicals_drop = [
+        "Азот нитритный",
+        "Азот аммонийный",
+        "Азот нитратный",
+        "Фенол",
+        "Нефтепродукты",
+        "Органические вещества (по ХПК)",
+        "Железо",
+        "Медь",
+        "Цинк",
+        "Марганец",
+        "БПК5"
+    ]
     count = 0
     plot_1 = []
     fig = go.Figure()
+    if chemicals==[]:
+        for chem in chemicals_drop:
+            plot_1.append(f"trace_{count}")
+            plot_1[count] = go.Bar(
+                x=df_1["Месяц"],
+                y=df_1[chem],
+                name=chem,
+                marker_color=color_dict[chem]
+            )
+            fig.add_trace(plot_1[count])
+            count+=1
     if isinstance(chemicals, str):
         plot_1 = go.Bar(
             x=df_1["Месяц"],
@@ -877,7 +967,7 @@ def main_plot(df_1, chemicals):
 )
 def update_output(start_month1, end_month1, year1, river_data, chemical):
     index_1 = months[months.index(start_month1):months.index(end_month1)+1]
-    df_river = df[df["Наименование водного объекта"]==river_data]
+    df_river = df[df["Наименование водного объекта"]==river_data].copy()
     df_river["Месяц"] = df_river["Месяц"].replace(months_dic)
     selected_1 = df_river[df_river["Месяц"].isin(index_1)]
     df_time1 = selected_1[selected_1["Год"]==year1]
