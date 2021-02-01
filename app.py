@@ -194,7 +194,6 @@ def reader(csv):
     for chem in ["Медь"]:
         df[chem] = df[chem].apply(lambda x: x.replace(",", "."))
         for row in range(len(df)):
-            print(row, df.loc[row, "Период наблюдений"], df.loc[row, chem])
             value = df.loc[row, chem]
             if (value=="в пределах нормы") or (value=="В пределах нормы ") or (value=="В пределах нормы"):
                 df.loc[row, chem] = "0"
