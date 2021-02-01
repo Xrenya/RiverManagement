@@ -207,7 +207,6 @@ def reader(csv):
                 df.loc[row, chem] = "3"
             else:
                 df.loc[row, chem] = "1"
-            print(row, df.loc[row, "Период наблюдений"], df.loc[row, chem])
         df[chem] = pd.to_numeric(df[chem], errors='coerce')
         
     for i in range(len(df)):
